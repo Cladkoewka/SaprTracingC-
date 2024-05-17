@@ -31,6 +31,11 @@ public class Program
         Solution.TraceElements(field, 2);
         Console.WriteLine();
         field.PrintField();
+
+        // Проложение проводов для цепи 3
+        Solution.TraceElements(field, 3);
+        Console.WriteLine();
+        field.PrintField();
     }
 }
 
