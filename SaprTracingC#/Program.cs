@@ -1,4 +1,6 @@
-﻿public class PassInfo
+﻿using System.Diagnostics;
+
+public class PassInfo
 {
     public bool IsPassed = false;
     public int Weight = 0;
@@ -41,7 +43,7 @@ public class Cell
     public Cell UpCell;
     public Cell DownCell;
 
-    public int TraceId;
+    public int TraceId = -1;
 
     public PassInfo PassInfo;
     public CellState State;
@@ -78,46 +80,6 @@ public class Program
 
 public static class Solution
 {
-
-    public static void TraceElements(DiscreteField discreteField)
-    {
-        // Сгруппируем компоненты по TraceId
-        Dictionary<int, List<Component>> componentsByTraceId = new Dictionary<int, List<Component>>();
-        foreach (var component in discreteField.Components)
-        {
-            if (!componentsByTraceId.ContainsKey(component.TraceId))
-                componentsByTraceId[component.TraceId] = new List<Component>();
-
-            componentsByTraceId[component.TraceId].Add(component);
-        }
-
-        // Соединяем компоненты для каждого TraceId
-        foreach (var pair in componentsByTraceId)
-        {
-            int traceId = pair.Key;
-            List<Component> componentsWithSameTraceId = pair.Value;
-
-            // Сортируем компоненты по расстоянию между ними
-            componentsWithSameTraceId.Sort((c1, c2) => discreteField.GetDistanceBetweenComponents(c1, c2));
-
-            // Соединяем компоненты в порядке возрастания расстояния
-            for (int i = 0; i < componentsWithSameTraceId.Count - 1; i++)
-            {
-                Component currentComponent = componentsWithSameTraceId[i];
-                Component nextComponent = componentsWithSameTraceId[i + 1];
-
-                discreteField.ClearPassInfo();
-                discreteField.WaveAlgorithm(currentComponent.Contacts[0], nextComponent.Contacts[0]);
-                List<Cell> path = discreteField.ReconstructPath(currentComponent.Contacts[0], nextComponent.Contacts[0]);
-                foreach (var cell in path)
-                    cell.State = CellState.ContainsWire;
-
-                currentComponent.IsConnected = true;
-                nextComponent.IsConnected = true;
-            }
-        }
-    }
-
     public static void TraceElements(DiscreteField discreteField, int traceId)
     {
         // Сгруппируем компоненты по TraceId
@@ -141,9 +103,13 @@ public static class Solution
             Component currentComponent = componentsWithSameTraceId[i];
             Component nextComponent = componentsWithSameTraceId[i + 1];
 
+            // Находим ближайшие контакты между текущим и следующим компонентами
+            Cell currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0], c)).First();
+            Cell nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0], c)).First();
+
             discreteField.ClearPassInfo();
-            discreteField.WaveAlgorithm(currentComponent.Contacts[0], nextComponent.Contacts[0]);
-            List<Cell> path = discreteField.ReconstructPath(currentComponent.Contacts[0], nextComponent.Contacts[0]);
+            discreteField.WaveAlgorithm(currentContact, nextContact);
+            List<Cell> path = discreteField.ReconstructPath(currentContact, nextContact);
             foreach (var cell in path)
                 cell.State = CellState.ContainsWire;
 
@@ -151,6 +117,7 @@ public static class Solution
             nextComponent.IsConnected = true;
         }
     }
+
 }
 
 
@@ -507,9 +474,9 @@ public class DiscreteField
 
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
     {
-        return nextCell != null 
-            && !nextCell.PassInfo.IsPassed 
-            && (nextCell.State == CellState.Empty || nextCell == endCell);
+        return nextCell != null
+        && (!nextCell.PassInfo.IsPassed)
+        && (nextCell.State == CellState.Empty || nextCell == endCell || (nextCell.State == CellState.ContainsWire && nextCell.TraceId == endCell.TraceId));
     }
 
     private bool IsInLimit(Cell nextCell, Cell endCell, Cell startCell)
@@ -740,6 +707,11 @@ public class DiscreteField
     {
         SetConsoleColor(ConsoleColor.White, ConsoleColor.Black);
     }
+
+    public int GetDistanceBetweenCells(Cell cell1, Cell cell2)
+{
+    return Math.Abs(cell1.X - cell2.X) + Math.Abs(cell1.Y - cell2.Y);
+}
 }
 
                          
