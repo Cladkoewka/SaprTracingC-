@@ -8,6 +8,7 @@
 public class Component
 {
     public List<Cell> Contacts;
+    public bool IsConnected = false;
     public int Id;
     public int TraceId;
 
@@ -59,26 +60,13 @@ public class Program
         DiscreteField field = new DiscreteField(16, 16);
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
         field.PrintField();
-       
-        
-        Cell firstPoint = field.Components[0].Contacts[0];
-        Cell secondPoint = field.Components[1].Contacts[2];
 
-        field.ClearPassInfo();
-        field.WaveAlgorithm(firstPoint, secondPoint);
+        Solution.TraceElements(field, 1);
 
         Console.WriteLine();
-        field.PrintPassWeights();
+        field.PrintField();
 
-        field.ClearPassInfo();
-        field.LimitedWaveAlgorithm(firstPoint, secondPoint);
-
-        Console.WriteLine();
-        field.PrintPassWeights();
-
-        var path = field.ReconstructPath(firstPoint, secondPoint);
-        foreach (var c in path)
-            c.State = CellState.ContainsWire;
+        Solution.TraceElements(field, 2);
 
         Console.WriteLine();
         field.PrintField();
@@ -90,9 +78,78 @@ public class Program
 
 public static class Solution
 {
-    public static void TraceElements()
-    {
 
+    public static void TraceElements(DiscreteField discreteField)
+    {
+        // Сгруппируем компоненты по TraceId
+        Dictionary<int, List<Component>> componentsByTraceId = new Dictionary<int, List<Component>>();
+        foreach (var component in discreteField.Components)
+        {
+            if (!componentsByTraceId.ContainsKey(component.TraceId))
+                componentsByTraceId[component.TraceId] = new List<Component>();
+
+            componentsByTraceId[component.TraceId].Add(component);
+        }
+
+        // Соединяем компоненты для каждого TraceId
+        foreach (var pair in componentsByTraceId)
+        {
+            int traceId = pair.Key;
+            List<Component> componentsWithSameTraceId = pair.Value;
+
+            // Сортируем компоненты по расстоянию между ними
+            componentsWithSameTraceId.Sort((c1, c2) => discreteField.GetDistanceBetweenComponents(c1, c2));
+
+            // Соединяем компоненты в порядке возрастания расстояния
+            for (int i = 0; i < componentsWithSameTraceId.Count - 1; i++)
+            {
+                Component currentComponent = componentsWithSameTraceId[i];
+                Component nextComponent = componentsWithSameTraceId[i + 1];
+
+                discreteField.ClearPassInfo();
+                discreteField.WaveAlgorithm(currentComponent.Contacts[0], nextComponent.Contacts[0]);
+                List<Cell> path = discreteField.ReconstructPath(currentComponent.Contacts[0], nextComponent.Contacts[0]);
+                foreach (var cell in path)
+                    cell.State = CellState.ContainsWire;
+
+                currentComponent.IsConnected = true;
+                nextComponent.IsConnected = true;
+            }
+        }
+    }
+
+    public static void TraceElements(DiscreteField discreteField, int traceId)
+    {
+        // Сгруппируем компоненты по TraceId
+        Dictionary<int, List<Component>> componentsByTraceId = new Dictionary<int, List<Component>>();
+        foreach (var component in discreteField.Components)
+        {
+            if (!componentsByTraceId.ContainsKey(component.TraceId))
+                componentsByTraceId[component.TraceId] = new List<Component>();
+
+            componentsByTraceId[component.TraceId].Add(component);
+        }
+
+        List<Component> componentsWithSameTraceId = componentsByTraceId[traceId];
+
+        // Сортируем компоненты по расстоянию между ними
+        componentsWithSameTraceId.Sort((c1, c2) => discreteField.GetDistanceBetweenComponents(c1, c2));
+
+        // Соединяем компоненты в порядке возрастания расстояния
+        for (int i = 0; i < componentsWithSameTraceId.Count - 1; i++)
+        {
+            Component currentComponent = componentsWithSameTraceId[i];
+            Component nextComponent = componentsWithSameTraceId[i + 1];
+
+            discreteField.ClearPassInfo();
+            discreteField.WaveAlgorithm(currentComponent.Contacts[0], nextComponent.Contacts[0]);
+            List<Cell> path = discreteField.ReconstructPath(currentComponent.Contacts[0], nextComponent.Contacts[0]);
+            foreach (var cell in path)
+                cell.State = CellState.ContainsWire;
+
+            currentComponent.IsConnected = true;
+            nextComponent.IsConnected = true;
+        }
     }
 }
 
@@ -160,6 +217,8 @@ public class DiscreteField
             }
         }
     }
+
+    
 
     private void FindFullComponent(Cell startCell, Component component)
     {
@@ -307,18 +366,23 @@ public class DiscreteField
                 switch (cell.State)
                 {
                     case CellState.Empty:
+                        SetConsoleColor(ConsoleColor.Gray, ConsoleColor.Black);
                         Console.Write("E ");
                         break;
                     case CellState.Obstacle:
+                        SetConsoleColor(ConsoleColor.Red, ConsoleColor.Black);
                         Console.Write("O ");
                         break;
                     case CellState.ContainsComponent:
+                        SetConsoleColor(ComponentColors[cell.Component.TraceId % ComponentColors.Length], ConsoleColor.Black);
                         Console.Write($"{cell.Component.TraceId} ");
                         break;
                     case CellState.ContainsComponentContact:
+                        SetConsoleColor(ComponentColors[cell.TraceId % ComponentColors.Length], ConsoleColor.Black);
                         Console.Write(". ");
                         break;
                     case CellState.ContainsWire:
+                        SetConsoleColor(ComponentColors[cell.TraceId % ComponentColors.Length ], ConsoleColor.Black);
                         Console.Write("W ");
                         break;
                     default:
@@ -327,6 +391,7 @@ public class DiscreteField
             }
             Console.WriteLine();
         }
+        ResetConsoleColor();
     }
 
     //Волновой алгоритм
@@ -506,6 +571,7 @@ public class DiscreteField
 
             if (nextCell != null)
             {
+                nextCell.TraceId = endCell.TraceId;
                 currentCell = nextCell;
             }
             else
@@ -631,5 +697,50 @@ public class DiscreteField
             Console.WriteLine();
         }
     }
+
+    //Solution
+    public int GetDistanceBetweenComponents(Component component1, Component component2)
+    {
+        // Проверяем, что компоненты имеют одинаковый TraceId
+        if (component1.TraceId != component2.TraceId)
+            return -1; // Если TraceId разные, возвращаем -1 для ошибки
+
+        // Находим ячейки, содержащие контакты компонентов
+        List<Cell> component1Contacts = component1.Contacts;
+        List<Cell> component2Contacts = component2.Contacts;
+
+        // Находим минимальное расстояние между ячейками контактов
+        int minDistance = int.MaxValue;
+        foreach (var contact1 in component1Contacts)
+        {
+            foreach (var contact2 in component2Contacts)
+            {
+                int distance = Math.Abs(contact1.X - contact2.X) + Math.Abs(contact1.Y - contact2.Y);
+                if (distance < minDistance)
+                    minDistance = distance;
+            }
+        }
+
+        return minDistance;
+    }
+
+    private static readonly ConsoleColor[] ComponentColors = 
+        {
+    ConsoleColor.Green, ConsoleColor.Cyan, ConsoleColor.Magenta, ConsoleColor.Yellow,
+    ConsoleColor.DarkGreen, ConsoleColor.DarkCyan, ConsoleColor.DarkMagenta, ConsoleColor.DarkYellow
+    };
+
+    private static void SetConsoleColor(ConsoleColor foreground, ConsoleColor background)
+    {
+        Console.ForegroundColor = foreground;
+        Console.BackgroundColor = background;
+    }
+
+    private static void ResetConsoleColor()
+    {
+        SetConsoleColor(ConsoleColor.White, ConsoleColor.Black);
+    }
 }
+
+                         
 
