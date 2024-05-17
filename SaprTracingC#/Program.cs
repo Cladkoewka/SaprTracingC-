@@ -22,6 +22,7 @@ public class Program
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
         field.PrintField();
 
+
         // Проложение проводов для цепи 1
         Solution.TraceElements(field, 1);
         Console.WriteLine();
@@ -68,11 +69,9 @@ public static class Solution
             Cell currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0], c)).First();
             Cell nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0], c)).First();
 
-            discreteField.ClearPassInfo();
-            discreteField.WaveAlgorithm(currentContact, nextContact);
-            List<Cell> path = discreteField.ReconstructPath(currentContact, nextContact);
-            foreach (var cell in path)
-                cell.State = CellState.ContainsWire;
+            // discreteField.WaveAlgorithm(currentContact, nextContact);
+            // discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
+             discreteField.BidirectionalWaveAlgorithm(currentContact,nextContact);
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -337,6 +336,8 @@ public class DiscreteField
     //Волновой алгоритм
     public void WaveAlgorithm(Cell startCell, Cell endCell)
     {
+        //Очищаем информацию о прохождении ячеек
+        ClearPassInfo();
 
         // Инициализируем начальную ячейку
         startCell.PassInfo.IsPassed = true;
@@ -386,11 +387,20 @@ public class DiscreteField
 
         }
 
+        //Строим путь
+
+        List<Cell> path = ReconstructPath(startCell, endCell);
+        foreach (var cell in path)
+            cell.State = CellState.ContainsWire;
+
     }
 
     // Волновой алгоритм с ограничением распостранения волны
     public void LimitedWaveAlgorithm(Cell startCell, Cell endCell)
     {
+
+        //Очищаем информацию о прохождении ячеек
+        ClearPassInfo();
 
         // Инициализируем начальную ячейку
         startCell.PassInfo.IsPassed = true;
@@ -440,7 +450,131 @@ public class DiscreteField
 
         }
 
+        //Строим путь
+
+        List<Cell> path = ReconstructPath(startCell, endCell);
+        foreach (var cell in path)
+            cell.State = CellState.ContainsWire;
+
+
     }
+
+    //Встречный волновой алгоритм
+    public void BidirectionalWaveAlgorithm(Cell startCell, Cell endCell)
+    {
+        //Очищаем информацию о прохождении ячеек
+        ClearPassInfo();
+
+        // Инициализация начальной и конечной ячеек
+        startCell.PassInfo.IsPassed = true;
+        startCell.PassInfo.Weight = 0;
+        endCell.PassInfo.IsPassed = true;
+        endCell.PassInfo.Weight = 0;
+
+        // Создание очередей для начальной и конечной ячеек
+        Queue<Cell> startQueue = new Queue<Cell>();
+        startQueue.Enqueue(startCell);
+        Queue<Cell> endQueue = new Queue<Cell>();
+        endQueue.Enqueue(endCell);
+
+        bool meetInTheMiddle = false;
+        Cell meetingCell = null;
+
+        while (startQueue.Count > 0 && endQueue.Count > 0)
+        {
+            // Расширение фронта волны, начинающейся от startCell
+            Cell currentStartCell = startQueue.Dequeue();
+            ExpandFrontier(currentStartCell, endQueue, ref meetInTheMiddle, ref meetingCell);
+
+            // Расширение фронта волны, начинающейся от endCell
+            Cell currentEndCell = endQueue.Dequeue();
+            ExpandFrontier(currentEndCell, startQueue, ref meetInTheMiddle, ref meetingCell);
+
+            if (meetInTheMiddle)
+                break;
+        }
+
+        PrintPassWeights();
+
+        if (meetingCell != null)
+        {
+            // Восстановление пути
+            List<Cell> path = ReconstructPath(startCell, meetingCell);
+            path.AddRange(ReconstructPath(meetingCell, endCell));
+
+            // Установка ячеек, содержащих провод
+            foreach (var cell in path)
+                cell.State = CellState.ContainsWire;
+        }
+    }
+
+    // Дополнительный Метод встречного волнового алгоритма
+    private void ExpandFrontier(Cell currentCell, Queue<Cell> oppositeQueue, ref bool meetInTheMiddle, ref Cell meetingCell)
+    {
+        if (IsCellAvaliable(currentCell, currentCell.DownCell, oppositeQueue))
+        {
+            int weight = currentCell.PassInfo.Weight + 1;
+            currentCell.DownCell.PassInfo.Weight = weight;
+            currentCell.DownCell.PassInfo.IsPassed = true;
+            CheckMeetingPoint(currentCell.DownCell, oppositeQueue, ref meetInTheMiddle, ref meetingCell);
+            currentCell.DownCell.TraceId = currentCell.TraceId;
+            oppositeQueue.Enqueue(currentCell.DownCell);
+        }
+
+        if (IsCellAvaliable(currentCell, currentCell.UpCell, oppositeQueue))
+        {
+            int weight = currentCell.PassInfo.Weight + 1;
+            currentCell.UpCell.PassInfo.Weight = weight;
+            currentCell.UpCell.PassInfo.IsPassed = true;
+            CheckMeetingPoint(currentCell.UpCell, oppositeQueue, ref meetInTheMiddle, ref meetingCell);
+            currentCell.UpCell.TraceId = currentCell.TraceId;
+            oppositeQueue.Enqueue(currentCell.UpCell);
+        }
+
+        if (IsCellAvaliable(currentCell, currentCell.LeftCell, oppositeQueue))
+        {
+            int weight = currentCell.PassInfo.Weight + 1;
+            currentCell.LeftCell.PassInfo.Weight = weight;
+            currentCell.LeftCell.PassInfo.IsPassed = true;
+            CheckMeetingPoint(currentCell.LeftCell, oppositeQueue, ref meetInTheMiddle, ref meetingCell);
+            currentCell.LeftCell.TraceId = currentCell.TraceId;
+            oppositeQueue.Enqueue(currentCell.LeftCell);
+        }
+
+        if (IsCellAvaliable(currentCell, currentCell.RightCell, oppositeQueue))
+        {
+            int weight = currentCell.PassInfo.Weight + 1;
+            currentCell.RightCell.PassInfo.Weight = weight;
+            currentCell.RightCell.PassInfo.IsPassed = true;
+            CheckMeetingPoint(currentCell.RightCell, oppositeQueue, ref meetInTheMiddle, ref meetingCell);
+            currentCell.RightCell.TraceId = currentCell.TraceId;
+            oppositeQueue.Enqueue(currentCell.RightCell);
+        }
+    }
+
+    // Дополнительный Метод встречного волнового алгоритма
+    private bool IsCellAvaliable(Cell currentCell,Cell nextCell, Queue<Cell> oppositeQueue)
+    {
+        return nextCell != null
+        && (!nextCell.PassInfo.IsPassed)
+        && (nextCell.State == CellState.Empty || (nextCell.State == CellState.ContainsWire && nextCell.TraceId == currentCell.TraceId));
+    }
+
+    // Дополнительный Метод встречного волнового алгоритма
+    private void CheckMeetingPoint(Cell currentCell, Queue<Cell> oppositeQueue, ref bool meetInTheMiddle, ref Cell meetingCell)
+    {
+        foreach (var cell in oppositeQueue)
+        {
+            if (cell.X == currentCell.X && cell.Y == currentCell.Y)
+            {
+                meetInTheMiddle = true;
+                meetingCell = currentCell;
+                break;
+            }
+        }
+    }
+
+
 
     // Проверка ячейки на доступность в волновом алгоритме
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
