@@ -1,6 +1,4 @@
-﻿
-
-public class PassInfo
+﻿public class PassInfo
 {
     public bool IsPassed = false;
     public int Weight = 0;
@@ -35,6 +33,8 @@ public enum Direction
 public class Cell
 {
     public int Id;
+    public int X;
+    public int Y;
     public Cell RightCell;
     public Cell LeftCell;
     public Cell UpCell;
@@ -70,6 +70,12 @@ public class Program
         Console.WriteLine();
         field.PrintPassWeights();
 
+        field.ClearPassInfo();
+        field.LimitedWaveAlgorithm(firstPoint, secondPoint);
+
+        Console.WriteLine();
+        field.PrintPassWeights();
+
         var path = field.ReconstructPath(firstPoint, secondPoint);
         foreach (var c in path)
             c.State = CellState.ContainsWire;
@@ -77,29 +83,6 @@ public class Program
         Console.WriteLine();
         field.PrintField();
 
-        /* Отладка
-        Console.WriteLine("ID");
-        field.PrintFieldID();
-
-        
-        Console.WriteLine("Right n id");
-        field.PrintRightNeighborsId();
-        */
-
-        /*
-        Console.WriteLine();
-        field.PrintFieldComponentsID();
-        Console.WriteLine();
-        field.PrintFieldComponentsTraceID();
-        
-
-        Console.WriteLine();
-        field.PrintFieldComponentsContactsTraceID();
-        
-
-        Console.WriteLine();
-        field.PrintComponentsContacts();
-        */
 
     }
 }
@@ -247,6 +230,8 @@ public class DiscreteField
         {
             Id = y * Width + x,
             State = GetCellStateFromChar(symbol),
+            X = x,
+            Y = y,
            
         };
 
@@ -353,7 +338,6 @@ public class DiscreteField
         // Инициализируем начальную ячейку
         startCell.PassInfo.IsPassed = true;
         startCell.PassInfo.Weight = 0;
-        startCell.PassInfo.Direction = Direction.Down;
 
         // Создаем очередь и помещаем в нее начальную ячейку
         Queue<Cell> queue = new Queue<Cell>();
@@ -364,55 +348,35 @@ public class DiscreteField
             Cell currentCell = queue.Dequeue();
 
 
-            if (currentCell.DownCell != null && !currentCell.DownCell.PassInfo.IsPassed && IsCellAvaliable(currentCell.DownCell, endCell))
+            if (IsCellAvaliable(currentCell.DownCell, endCell))
             {
                 int weight = currentCell.PassInfo.Weight + 1;
-                if (currentCell.PassInfo.Direction != Direction.Down)
-                {
-                    //weight++;
-                }
                 currentCell.DownCell.PassInfo.Weight = weight;
                 currentCell.DownCell.PassInfo.IsPassed = true;
-                currentCell.DownCell.PassInfo.Direction = Direction.Down;
                 queue.Enqueue(currentCell.DownCell);
             }
 
-            if (currentCell.UpCell != null && !currentCell.UpCell.PassInfo.IsPassed && IsCellAvaliable(currentCell.UpCell, endCell))
+            if (IsCellAvaliable(currentCell.UpCell, endCell))
             {
                 int weight = currentCell.PassInfo.Weight + 1;
-                if (currentCell.PassInfo.Direction != Direction.Up)
-                {
-                    //weight++;
-                }
                 currentCell.UpCell.PassInfo.Weight = weight;
                 currentCell.UpCell.PassInfo.IsPassed = true;
-                currentCell.UpCell.PassInfo.Direction = Direction.Up;
                 queue.Enqueue(currentCell.UpCell);
             }
 
-            if (currentCell.LeftCell != null && !currentCell.LeftCell.PassInfo.IsPassed && IsCellAvaliable(currentCell.LeftCell, endCell))
+            if (IsCellAvaliable(currentCell.LeftCell, endCell))
             {
                 int weight = currentCell.PassInfo.Weight + 1;
-                if (currentCell.PassInfo.Direction != Direction.Left)
-                {
-                    //weight++;
-                }
                 currentCell.LeftCell.PassInfo.Weight = weight;
                 currentCell.LeftCell.PassInfo.IsPassed = true;
-                currentCell.LeftCell.PassInfo.Direction = Direction.Left;
                 queue.Enqueue(currentCell.LeftCell);
             }
 
-            if (currentCell.RightCell != null && !currentCell.RightCell.PassInfo.IsPassed && IsCellAvaliable(currentCell.RightCell, endCell))
+            if (IsCellAvaliable(currentCell.RightCell, endCell))
             {
                 int weight = currentCell.PassInfo.Weight + 1;
-                if (currentCell.PassInfo.Direction != Direction.Right)
-                {
-                    //weight++;
-                }
                 currentCell.RightCell.PassInfo.Weight = weight;
                 currentCell.RightCell.PassInfo.IsPassed = true;
-                currentCell.RightCell.PassInfo.Direction = Direction.Right;
                 queue.Enqueue(currentCell.RightCell);
             }
 
@@ -421,11 +385,74 @@ public class DiscreteField
 
     }
 
+    public void LimitedWaveAlgorithm(Cell startCell, Cell endCell)
+    {
+        // Очищаем информацию о пройденных ячейках
+        //ClearPassInfo();
 
+        // Инициализируем начальную ячейку
+        startCell.PassInfo.IsPassed = true;
+        startCell.PassInfo.Weight = 0;
+
+        // Создаем очередь и помещаем в нее начальную ячейку
+        Queue<Cell> queue = new Queue<Cell>();
+        queue.Enqueue(startCell);
+
+        while (queue.Count > 0)
+        {
+            Cell currentCell = queue.Dequeue();
+
+
+            if (IsCellAvaliable(currentCell.DownCell, endCell) && IsInLimit(currentCell.DownCell, endCell, startCell))
+            {
+                int weight = currentCell.PassInfo.Weight + 1;
+                currentCell.DownCell.PassInfo.Weight = weight;
+                currentCell.DownCell.PassInfo.IsPassed = true;
+                queue.Enqueue(currentCell.DownCell);
+            }
+
+            if (IsCellAvaliable(currentCell.UpCell, endCell) && IsInLimit(currentCell.UpCell, endCell, startCell))
+            {
+                int weight = currentCell.PassInfo.Weight + 1;
+                currentCell.UpCell.PassInfo.Weight = weight;
+                currentCell.UpCell.PassInfo.IsPassed = true;
+                queue.Enqueue(currentCell.UpCell);
+            }
+
+            if (IsCellAvaliable(currentCell.LeftCell, endCell) && IsInLimit(currentCell.LeftCell, endCell, startCell))
+            {
+                int weight = currentCell.PassInfo.Weight + 1;
+                currentCell.LeftCell.PassInfo.Weight = weight;
+                currentCell.LeftCell.PassInfo.IsPassed = true;
+                queue.Enqueue(currentCell.LeftCell);
+            }
+
+            if (IsCellAvaliable(currentCell.RightCell, endCell) && IsInLimit(currentCell.RightCell, endCell, startCell))
+            {
+                int weight = currentCell.PassInfo.Weight + 1;
+                currentCell.RightCell.PassInfo.Weight = weight;
+                currentCell.RightCell.PassInfo.IsPassed = true;
+                queue.Enqueue(currentCell.RightCell);
+            }
+
+
+        }
+
+    }
 
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
     {
-        return nextCell.State == CellState.Empty || nextCell == endCell;
+        return nextCell != null 
+            && !nextCell.PassInfo.IsPassed 
+            && (nextCell.State == CellState.Empty || nextCell == endCell);
+    }
+
+    private bool IsInLimit(Cell nextCell, Cell endCell, Cell startCell)
+    {
+        return nextCell.X >= Math.Min(startCell.X, endCell.X)
+           && nextCell.X <= Math.Max(startCell.X, endCell.X)
+           && nextCell.Y >= Math.Min(startCell.Y, endCell.Y)
+           && nextCell.Y <= Math.Max(startCell.Y, endCell.Y);
     }
 
     public List<Cell> ReconstructPath(Cell startCell, Cell endCell)
