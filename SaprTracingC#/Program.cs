@@ -92,12 +92,19 @@ public static class Solution
             Component nextComponent = componentsWithSameTraceId[i + 1];
 
             // Находим ближайшие контакты между текущим и следующим компонентами
-            Cell currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0], c)).First();
-            Cell nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0], c)).First();
+            Contact currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0].Cell, c.Cell)).Where(c => !c.IsOccupied).First();
+            Contact nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0].Cell, c.Cell)).Where(c => !c.IsOccupied).First();
 
-            discreteField.WaveAlgorithm(currentContact, nextContact);
+            Console.WriteLine($"First Contact {currentContact.Cell.Id}  Second {nextContact.Cell.Id}");
+            currentContact.IsOccupied = true;
+            nextContact.IsOccupied = true; 
+
+            discreteField.WaveAlgorithm(currentContact.Cell, nextContact.Cell);
             //discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
             //discreteField.BidirectionalWaveAlgorithm(currentContact, nextContact);
+
+            Console.WriteLine("akkfds;ahg;sdhagljsdagjsdahg");
+            discreteField.PrintField();
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -166,18 +173,46 @@ public class DiscreteField
                     Component component = new Component
                     {
                         Id = componentId,
-                        TraceId = cell.TraceId,
-                        Contacts = new List<Cell> { },
+                        TraceId = cell.TraceId
                     };
 
                     Components.Add(component);
 
                     FindFullComponent(cell, component);
 
+                    // Создаем контакты для компонента
+                    CreateContactsForComponent(component, cell);
+                }
+                else if (cell.State == CellState.ContainsComponentContact)
+                {
+                    // Добавляем ячейку с контактом к соответствующему компоненту
+                    //Component component = Components.Find(c => c.TraceId == cell.TraceId);
+                   // if (component != null)
+                    //{
+                     //   component.Contacts.Add(new Contact(cell));
+                    //}
                 }
             }
         }
     }
+
+    private void CreateContactsForComponent(Component component, Cell startCell)
+    {
+        Queue<Cell> queue = new Queue<Cell>();
+        queue.Enqueue(startCell);
+        startCell.Component = component;
+
+        while (queue.Count > 0)
+        {
+            Cell currentCell = queue.Dequeue();
+
+            AddNeighborsToCellQueue(currentCell, queue, component);
+
+            // Создаем контакт для текущей ячейки
+            //component.Contacts.Add(new Contact(currentCell));
+        }
+    }
+
 
 
     //Поиск всех ячеек, принадлежащих компоненту
@@ -206,7 +241,9 @@ public class DiscreteField
         if (cell.RightCell != null && cell.RightCell.State == CellState.ContainsComponentContact)
         {
             cell.RightCell.TraceId = component.TraceId;
-            component.Contacts.Add(cell.RightCell);
+            Contact newContact = new Contact(cell.RightCell);
+            if (!component.Contacts.Contains(newContact))
+                component.Contacts.Add(newContact);
         }
 
         if (cell.LeftCell != null && cell.LeftCell.State == CellState.ContainsComponent && cell.LeftCell.Component == null)
@@ -217,7 +254,9 @@ public class DiscreteField
         if (cell.LeftCell != null && cell.LeftCell.State == CellState.ContainsComponentContact)
         {
             cell.LeftCell.TraceId = component.TraceId;
-            component.Contacts.Add(cell.LeftCell);
+            Contact newContact = new Contact(cell.LeftCell);
+            if (!component.Contacts.Contains(newContact))
+                component.Contacts.Add(newContact);
         }
 
         if (cell.UpCell != null && cell.UpCell.State == CellState.ContainsComponent && cell.UpCell.Component == null)
@@ -228,7 +267,9 @@ public class DiscreteField
         if (cell.UpCell != null && cell.UpCell.State == CellState.ContainsComponentContact)
         {
             cell.UpCell.TraceId = component.TraceId;
-            component.Contacts.Add(cell.UpCell);
+            Contact newContact = new Contact(cell.UpCell);
+            if (!component.Contacts.Contains(newContact))
+                component.Contacts.Add(newContact);
         }
 
         if (cell.DownCell != null && cell.DownCell.State == CellState.ContainsComponent && cell.DownCell.Component == null)
@@ -239,7 +280,9 @@ public class DiscreteField
         if (cell.DownCell != null && cell.DownCell.State == CellState.ContainsComponentContact)
         {
             cell.DownCell.TraceId = component.TraceId;
-            component.Contacts.Add(cell.DownCell);
+            Contact newContact = new Contact(cell.DownCell);
+            if (!component.Contacts.Contains(newContact))
+                component.Contacts.Add(newContact);
         }
     }
 
@@ -823,8 +866,8 @@ public class DiscreteField
             return -1; // Если TraceId разные, возвращаем -1 для ошибки
 
         // Находим ячейки, содержащие контакты компонентов
-        List<Cell> component1Contacts = component1.Contacts;
-        List<Cell> component2Contacts = component2.Contacts;
+        List<Contact> component1Contacts = component1.Contacts;
+        List<Contact> component2Contacts = component2.Contacts;
 
         // Находим минимальное расстояние между ячейками контактов
         int minDistance = int.MaxValue;
@@ -832,7 +875,7 @@ public class DiscreteField
         {
             foreach (var contact2 in component2Contacts)
             {
-                int distance = Math.Abs(contact1.X - contact2.X) + Math.Abs(contact1.Y - contact2.Y);
+                int distance = Math.Abs(contact1.Cell.X - contact2.Cell.X) + Math.Abs(contact1.Cell.Y - contact2.Cell.Y);
                 if (distance < minDistance)
                     minDistance = distance;
             }
@@ -963,7 +1006,7 @@ public class DiscreteField
         {
             foreach (var contact in component.Contacts)
             {
-                Console.Write($"{contact.Id} ");
+                Console.Write($"{contact.Cell.Id} ");
             }
             Console.WriteLine();
 
@@ -1036,14 +1079,63 @@ public class PassInfo
     public Direction Direction; // Направление движения при прохождении ячейки
 };
 
+public class Contact
+{
+    public Cell Cell { get; set; }
+    public bool IsOccupied { get; set; }
+
+    public Contact(Cell cell)
+    {
+        Cell = cell;
+        IsOccupied = false;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is Contact other)
+        {
+            return this.Cell.Equals(other.Cell);
+        }
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return this.Cell.GetHashCode();
+    }
+
+    public static bool operator ==(Contact contact1, Contact contact2)
+    {
+        if (ReferenceEquals(contact1, contact2))
+            return true;
+
+        if (ReferenceEquals(contact1, null) || ReferenceEquals(contact2, null))
+            return false;
+
+        return contact1.Equals(contact2);
+    }
+
+    public static bool operator !=(Contact contact1, Contact contact2)
+    {
+        return !(contact1 == contact2);
+    }
+}
+
+
 //Компонент
 public class Component
 {
-    public List<Cell> Contacts; // Список контактов компонента
-    public bool IsConnected = false; // Флаг, указывающий, что компонент подключен
-    public int Id; // Уникальный идентификатор компонента
-    public int TraceId; // Идентификатор цепи, к которой относится компонент
+    public List<Contact> Contacts { get; set; }
+    public bool IsConnected = false;
+    public int Id;
+    public int TraceId;
+
+    public Component()
+    {
+        Contacts = new List<Contact>();
+    }
 }
+
 
 // Состояние ячейки
 public enum CellState
