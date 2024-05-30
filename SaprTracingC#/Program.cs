@@ -21,30 +21,47 @@ public class Program
         DiscreteField field = new DiscreteField(16, 16);
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
         field.PrintField();
+        Console.WriteLine("Trace ID");
         field.PrintTraceID();
+        Console.WriteLine("ID");
         field.PrintFieldID();
+        Console.WriteLine("Weights");
         field.PrintPassWeights();
 
 
         // Проложение проводов для цепи 1
         Solution.TraceElements(field, 1);
         Console.WriteLine();
-        field.PrintPassWeights();
         field.PrintField();
+        Console.WriteLine("Trace ID");
         field.PrintTraceID();
+        Console.WriteLine("ID");
         field.PrintFieldID();
+        Console.WriteLine("Weights");
+        field.PrintPassWeights();
 
         // Проложение проводов для цепи 2
         Solution.TraceElements(field, 2);
         Console.WriteLine();
         field.PrintField();
+        Console.WriteLine("Trace ID");
         field.PrintTraceID();
+        Console.WriteLine("ID");
         field.PrintFieldID();
+        Console.WriteLine("Weights");
+        field.PrintPassWeights();
 
         // Проложение проводов для цепи 3
         Solution.TraceElements(field, 3);
         Console.WriteLine();
         field.PrintField();
+        field.PrintField();
+        Console.WriteLine("Trace ID");
+        field.PrintTraceID();
+        Console.WriteLine("ID");
+        field.PrintFieldID();
+        Console.WriteLine("Weights");
+        field.PrintPassWeights();
     }
 }
 
@@ -54,6 +71,7 @@ public static class Solution
     {
         // Сгруппируем компоненты по TraceId
         Dictionary<int, List<Component>> componentsByTraceId = new Dictionary<int, List<Component>>();
+
         foreach (var component in discreteField.Components)
         {
             if (!componentsByTraceId.ContainsKey(component.TraceId))
@@ -77,9 +95,9 @@ public static class Solution
             Cell currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0], c)).First();
             Cell nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0], c)).First();
 
-            //discreteField.WaveAlgorithm(currentContact, nextContact);
-            // discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
-            discreteField.BidirectionalWaveAlgorithm(currentContact,nextContact);
+            discreteField.WaveAlgorithm(currentContact, nextContact);
+            //discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
+            //discreteField.BidirectionalWaveAlgorithm(currentContact, nextContact);
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -100,7 +118,7 @@ public class DiscreteField
     private int componentIdCounter = 1; // Счетчик для присвоения уникальных идентификаторов компонентам
 
     // Конструктор
-    
+
 
 
 
@@ -149,7 +167,7 @@ public class DiscreteField
                     {
                         Id = componentId,
                         TraceId = cell.TraceId,
-                        Contacts = new List<Cell> {},
+                        Contacts = new List<Cell> { },
                     };
 
                     Components.Add(component);
@@ -161,7 +179,7 @@ public class DiscreteField
         }
     }
 
-    
+
     //Поиск всех ячеек, принадлежащих компоненту
     private void FindFullComponent(Cell startCell, Component component)
     {
@@ -235,7 +253,7 @@ public class DiscreteField
             State = GetCellStateFromChar(symbol),
             X = x,
             Y = y,
-           
+
         };
 
         if (cell.State == CellState.ContainsComponent)
@@ -246,7 +264,7 @@ public class DiscreteField
         return cell;
     }
 
-   
+
     // Выбор состояния ячейки на основе символа
     public CellState GetCellStateFromChar(char symbol)
     {
@@ -333,7 +351,7 @@ public class DiscreteField
                         Console.Write(". ");
                         break;
                     case CellState.ContainsWire:
-                        SetConsoleColor(ComponentColors[cell.TraceId % ComponentColors.Length ], ConsoleColor.Black);
+                        SetConsoleColor(ComponentColors[cell.TraceId % ComponentColors.Length], ConsoleColor.Black);
                         Console.Write("W ");
                         break;
                     default:
@@ -403,7 +421,10 @@ public class DiscreteField
 
         List<Cell> path = ReconstructPath(startCell, endCell);
         foreach (var cell in path)
+        {
+            cell.TraceId = startCell.TraceId;
             cell.State = CellState.ContainsWire;
+        }
 
     }
 
@@ -466,7 +487,10 @@ public class DiscreteField
 
         List<Cell> path = ReconstructPath(startCell, endCell);
         foreach (var cell in path)
+        {
+            cell.TraceId = startCell.TraceId;
             cell.State = CellState.ContainsWire;
+        }
 
 
     }
@@ -491,7 +515,10 @@ public class DiscreteField
         backwardQueue.Enqueue(endCell);
 
         bool pathFound = false;
+        Cell meetingCellOther = null;
         Cell meetingCell = null;
+        bool meetForward = false;
+
 
         while (forwardQueue.Count > 0 || backwardQueue.Count > 0)
         {
@@ -504,22 +531,26 @@ public class DiscreteField
                 if (backwardQueue.Contains(currentCell.DownCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.DownCell;
+                    meetingCellOther = currentCell.DownCell;
+                    meetingCell = currentCell;
                 }
                 else if (backwardQueue.Contains(currentCell.UpCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.UpCell;
+                    meetingCellOther = currentCell.UpCell;
+                    meetingCell = currentCell;
                 }
                 else if (backwardQueue.Contains(currentCell.LeftCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.LeftCell;
+                    meetingCellOther = currentCell.LeftCell;
+                    meetingCell = currentCell;
                 }
                 else if (backwardQueue.Contains(currentCell.RightCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.RightCell;
+                    meetingCellOther = currentCell.RightCell;
+                    meetingCell = currentCell;
                 }
 
                 if (IsCellAvaliableBidirect(currentCell.DownCell, startCell))
@@ -564,22 +595,30 @@ public class DiscreteField
                 if (forwardQueue.Contains(currentCell.DownCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.DownCell;
+                    meetForward = true;
+                    meetingCellOther = currentCell.DownCell;
+                    meetingCell = currentCell;
                 }
                 else if (forwardQueue.Contains(currentCell.UpCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.UpCell;
+                    meetForward = true;
+                    meetingCellOther = currentCell.UpCell;
+                    meetingCell = currentCell;
                 }
                 else if (forwardQueue.Contains(currentCell.LeftCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.LeftCell;
+                    meetForward = true;
+                    meetingCellOther = currentCell.LeftCell;
+                    meetingCell = currentCell;
                 }
                 else if (forwardQueue.Contains(currentCell.RightCell))
                 {
                     pathFound = true;
-                    meetingCell = currentCell.RightCell;
+                    meetForward = true;
+                    meetingCellOther = currentCell.RightCell;
+                    meetingCell = currentCell;
                 }
 
                 if (IsCellAvaliableBidirect(currentCell.DownCell, endCell))
@@ -617,12 +656,28 @@ public class DiscreteField
 
             if (pathFound)
             {
-                Console.WriteLine($"Meeting Cell {meetingCell.Id}");
-                // Строим путь от startCell до встречной ячейки
-                List<Cell> forwardPath = ReconstructPath(startCell, meetingCell);
+                Console.WriteLine($"Meeting Cell {meetingCell.Id}, Meeting Cell other {meetingCellOther.Id}");
+                Console.WriteLine(meetForward);
+                List<Cell> forwardPath = new List<Cell>();
+                List<Cell> backwardPath = new List<Cell>();
 
-                // Строим путь от endCell до встречной ячейки
-                List<Cell> backwardPath = ReconstructPath(meetingCell, endCell);
+                if (meetForward)
+                {
+                    // Строим путь от startCell до встречной ячейки
+                    forwardPath = ReconstructPath(startCell, meetingCell);
+
+                    // Строим путь от endCell до встречной ячейки
+                    backwardPath = ReconstructPath(endCell, meetingCellOther);
+                }
+                else
+                {
+                    // Строим путь от startCell до встречной ячейки
+                    forwardPath = ReconstructPath(startCell, meetingCellOther);
+
+                    // Строим путь от endCell до встречной ячейки
+                    backwardPath = ReconstructPath(endCell, meetingCell);
+                }
+                
 
                 List<Cell> fullPath = new List<Cell>();
 
@@ -641,13 +696,15 @@ public class DiscreteField
                     if (!fullPath.Contains(cell))
                         fullPath.Add(cell);
                 }
+
                 Console.WriteLine();
                 foreach (var cell in fullPath)
                 {
+                    Console.WriteLine($"Id{cell.Id}   Trace Id {cell.TraceId}");
                     cell.TraceId = startCell.TraceId;
                     cell.State = CellState.ContainsWire;
                 }
-                    
+
 
                 return;
             }
@@ -695,7 +752,7 @@ public class DiscreteField
             Cell nextCell = null;
             int minWeight = int.MaxValue;
 
-            if (currentCell.DownCell != null && currentCell.DownCell.PassInfo.Weight == currentCell.PassInfo.Weight - 1 )
+            if (currentCell.DownCell != null && currentCell.DownCell.PassInfo.Weight == currentCell.PassInfo.Weight - 1)
             {
                 if (currentCell.DownCell.PassInfo.Weight < minWeight)
                 {
@@ -733,7 +790,7 @@ public class DiscreteField
 
             if (nextCell != null)
             {
-                nextCell.TraceId = endCell.TraceId;
+                //nextCell.TraceId = endCell.TraceId;
                 currentCell = nextCell;
             }
             else
@@ -818,6 +875,25 @@ public class DiscreteField
                 return ConsoleColor.Gray; // Серый по умолчанию
         }
     }
+
+    private ConsoleColor GetColorForCellState(int num)
+    {
+        switch (num)
+        {
+            case 0:
+                return ConsoleColor.White; // Белый для пустых ячеек
+            case 1:
+                return ConsoleColor.Red; // Красный для препятствий
+            case 2:
+                return ConsoleColor.Yellow; // Желтый для компонентов
+            case 3:
+                return ConsoleColor.Green; // Зеленый для контактов компонентов
+            case 4:
+                return ConsoleColor.Blue; // Синий для провода
+            default:
+                return ConsoleColor.Gray; // Серый по умолчанию
+        }
+    }
     //Отладочный метод вывода
     public void PrintRightNeighborsId()
     {
@@ -890,7 +966,7 @@ public class DiscreteField
                 Console.Write($"{contact.Id} ");
             }
             Console.WriteLine();
-            
+
         }
     }
     //Отладочный метод вывода
@@ -916,15 +992,17 @@ public class DiscreteField
             for (int x = 0; x < Width; x++)
             {
                 Cell cell = GetCell(x, y);
+                Console.ForegroundColor = GetColorForCellState(cell.TraceId);
                 Console.Write("{0,2} ", cell.TraceId);
             }
+            Console.ResetColor();
             Console.WriteLine();
         }
     }
 
 
     // Цвета для вывода в консоль
-    private static readonly ConsoleColor[] ComponentColors = 
+    private static readonly ConsoleColor[] ComponentColors =
         {
     ConsoleColor.Green, ConsoleColor.Cyan, ConsoleColor.Magenta, ConsoleColor.Yellow,
     ConsoleColor.DarkGreen, ConsoleColor.DarkCyan, ConsoleColor.DarkMagenta, ConsoleColor.DarkYellow
@@ -1009,6 +1087,3 @@ public class Cell
         return Id == other.Id;
     }
 };
-
-
-
