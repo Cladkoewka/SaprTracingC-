@@ -21,17 +21,25 @@ public class Program
         DiscreteField field = new DiscreteField(16, 16);
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
         field.PrintField();
+        field.PrintTraceID();
+        field.PrintFieldID();
+        field.PrintPassWeights();
 
 
         // Проложение проводов для цепи 1
         Solution.TraceElements(field, 1);
         Console.WriteLine();
+        field.PrintPassWeights();
         field.PrintField();
+        field.PrintTraceID();
+        field.PrintFieldID();
 
         // Проложение проводов для цепи 2
         Solution.TraceElements(field, 2);
         Console.WriteLine();
         field.PrintField();
+        field.PrintTraceID();
+        field.PrintFieldID();
 
         // Проложение проводов для цепи 3
         Solution.TraceElements(field, 3);
@@ -69,9 +77,9 @@ public static class Solution
             Cell currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0], c)).First();
             Cell nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0], c)).First();
 
-            // discreteField.WaveAlgorithm(currentContact, nextContact);
+            //discreteField.WaveAlgorithm(currentContact, nextContact);
             // discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
-             discreteField.BidirectionalWaveAlgorithm(currentContact,nextContact);
+            discreteField.BidirectionalWaveAlgorithm(currentContact,nextContact);
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -92,6 +100,10 @@ public class DiscreteField
     private int componentIdCounter = 1; // Счетчик для присвоения уникальных идентификаторов компонентам
 
     // Конструктор
+    
+
+
+
     public DiscreteField(int width, int height)
     {
         Width = width;
@@ -459,17 +471,205 @@ public class DiscreteField
 
     }
 
+    public void BidirectionalWaveAlgorithm(Cell startCell, Cell endCell)
+    {
+        Console.WriteLine($"Start cell {startCell.Id}, end cell {endCell.Id}");
+        // Очищаем информацию о прохождении ячеек
+        ClearPassInfo();
+
+        // Инициализируем начальные ячейки
+        startCell.PassInfo.IsPassed = true;
+        startCell.PassInfo.Weight = 0;
+        endCell.PassInfo.IsPassed = true;
+        endCell.PassInfo.Weight = 0;
+
+        // Создаем очереди для прямого и обратного фронта
+        Queue<Cell> forwardQueue = new Queue<Cell>();
+        Queue<Cell> backwardQueue = new Queue<Cell>();
+
+        forwardQueue.Enqueue(startCell);
+        backwardQueue.Enqueue(endCell);
+
+        bool pathFound = false;
+        Cell meetingCell = null;
+
+        while (forwardQueue.Count > 0 || backwardQueue.Count > 0)
+        {
+            // Обработка ячеек переднего фронта
+            if (forwardQueue.Count > 0)
+            {
+                Cell currentCell = forwardQueue.Dequeue();
+
+                // Проверка всех соседей на наличие в задней очереди
+                if (backwardQueue.Contains(currentCell.DownCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.DownCell;
+                }
+                else if (backwardQueue.Contains(currentCell.UpCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.UpCell;
+                }
+                else if (backwardQueue.Contains(currentCell.LeftCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.LeftCell;
+                }
+                else if (backwardQueue.Contains(currentCell.RightCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.RightCell;
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.DownCell, startCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.DownCell.PassInfo.Weight = weight;
+                    currentCell.DownCell.PassInfo.IsPassed = true;
+                    forwardQueue.Enqueue(currentCell.DownCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.UpCell, startCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.UpCell.PassInfo.Weight = weight;
+                    currentCell.UpCell.PassInfo.IsPassed = true;
+                    forwardQueue.Enqueue(currentCell.UpCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.LeftCell, startCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.LeftCell.PassInfo.Weight = weight;
+                    currentCell.LeftCell.PassInfo.IsPassed = true;
+                    forwardQueue.Enqueue(currentCell.LeftCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.RightCell, startCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.RightCell.PassInfo.Weight = weight;
+                    currentCell.RightCell.PassInfo.IsPassed = true;
+                    forwardQueue.Enqueue(currentCell.RightCell);
+                }
+            }
+
+            // Обработка ячеек заднего фронта
+            if (backwardQueue.Count > 0)
+            {
+                Cell currentCell = backwardQueue.Dequeue();
+
+                // Проверка всех соседей на наличие в передней очереди
+                if (forwardQueue.Contains(currentCell.DownCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.DownCell;
+                }
+                else if (forwardQueue.Contains(currentCell.UpCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.UpCell;
+                }
+                else if (forwardQueue.Contains(currentCell.LeftCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.LeftCell;
+                }
+                else if (forwardQueue.Contains(currentCell.RightCell))
+                {
+                    pathFound = true;
+                    meetingCell = currentCell.RightCell;
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.DownCell, endCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.DownCell.PassInfo.Weight = weight;
+                    currentCell.DownCell.PassInfo.IsPassed = true;
+                    backwardQueue.Enqueue(currentCell.DownCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.UpCell, endCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.UpCell.PassInfo.Weight = weight;
+                    currentCell.UpCell.PassInfo.IsPassed = true;
+                    backwardQueue.Enqueue(currentCell.UpCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.LeftCell, endCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.LeftCell.PassInfo.Weight = weight;
+                    currentCell.LeftCell.PassInfo.IsPassed = true;
+                    backwardQueue.Enqueue(currentCell.LeftCell);
+                }
+
+                if (IsCellAvaliableBidirect(currentCell.RightCell, endCell))
+                {
+                    int weight = currentCell.PassInfo.Weight + 1;
+                    currentCell.RightCell.PassInfo.Weight = weight;
+                    currentCell.RightCell.PassInfo.IsPassed = true;
+                    backwardQueue.Enqueue(currentCell.RightCell);
+                }
+            }
+
+            if (pathFound)
+            {
+                Console.WriteLine($"Meeting Cell {meetingCell.Id}");
+                // Строим путь от startCell до встречной ячейки
+                List<Cell> forwardPath = ReconstructPath(startCell, meetingCell);
+
+                // Строим путь от endCell до встречной ячейки
+                List<Cell> backwardPath = ReconstructPath(meetingCell, endCell);
+
+                List<Cell> fullPath = new List<Cell>();
+
+                // Отмечаем ячейки, содержащие провод
+                foreach (var cell in forwardPath)
+                {
+                    Console.WriteLine(cell.Id);
+                    if (!fullPath.Contains(cell))
+                        fullPath.Add(cell);
+                }
+
+                Console.WriteLine();
+                foreach (var cell in backwardPath)
+                {
+                    Console.WriteLine(cell.Id);
+                    if (!fullPath.Contains(cell))
+                        fullPath.Add(cell);
+                }
+                Console.WriteLine();
+                foreach (var cell in fullPath)
+                {
+                    cell.TraceId = startCell.TraceId;
+                    cell.State = CellState.ContainsWire;
+                }
+                    
+
+                return;
+            }
+        }
+    }
+
+    private bool IsCellAvaliableBidirect(Cell cell, Cell prevCell)
+    {
+        return cell != null
+            && !cell.PassInfo.IsPassed
+            && cell.State == CellState.Empty || (cell.State == CellState.ContainsWire && cell.TraceId == prevCell.TraceId);
+    }
 
 
-
-
-    // Проверка ячейки на доступность в волновом алгоритме
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
     {
         return nextCell != null
         && (!nextCell.PassInfo.IsPassed)
         && (nextCell.State == CellState.Empty || nextCell == endCell || (nextCell.State == CellState.ContainsWire && nextCell.TraceId == endCell.TraceId));
     }
+
+
 
     // Доп проверка для волнового алгоритма с ограничением
     private bool IsInLimit(Cell nextCell, Cell endCell, Cell startCell)
@@ -592,9 +792,30 @@ public class DiscreteField
             for (int x = 0; x < Width; x++)
             {
                 Cell cell = GetCell(x, y);
-                Console.Write($"{cell.Id} ");
+                Console.ForegroundColor = GetColorForCellState(cell.State);
+                Console.Write("{0,3} ", cell.Id);
             }
+            Console.ResetColor();
             Console.WriteLine();
+        }
+    }
+
+    private ConsoleColor GetColorForCellState(CellState state)
+    {
+        switch (state)
+        {
+            case CellState.Empty:
+                return ConsoleColor.White; // Белый для пустых ячеек
+            case CellState.Obstacle:
+                return ConsoleColor.Red; // Красный для препятствий
+            case CellState.ContainsComponent:
+                return ConsoleColor.Yellow; // Желтый для компонентов
+            case CellState.ContainsComponentContact:
+                return ConsoleColor.Green; // Зеленый для контактов компонентов
+            case CellState.ContainsWire:
+                return ConsoleColor.Blue; // Синий для провода
+            default:
+                return ConsoleColor.Gray; // Серый по умолчанию
         }
     }
     //Отладочный метод вывода
@@ -680,13 +901,28 @@ public class DiscreteField
             for (int x = 0; x < Width; x++)
             {
                 Cell cell = GetCell(x, y);
-                Console.Write("{0,2} ", cell.PassInfo.Weight);
+                Console.ForegroundColor = GetColorForCellState(cell.State);
+                Console.Write("{0,3} ", cell.PassInfo.Weight);
+            }
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+    }
+
+    public void PrintTraceID()
+    {
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                Cell cell = GetCell(x, y);
+                Console.Write("{0,2} ", cell.TraceId);
             }
             Console.WriteLine();
         }
     }
 
-    
+
     // Цвета для вывода в консоль
     private static readonly ConsoleColor[] ComponentColors = 
         {
