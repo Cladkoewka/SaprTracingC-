@@ -9,6 +9,7 @@
 
 public class Program
 {
+    // Точка входа
     public static void Main()
     {
         // Создание дискретного поля, инициализация из файла и вывод на консоль
@@ -86,6 +87,7 @@ public static class Solution
 
 
 // Дискретное рабочее поле, с методами волновых алгоритмов, чтения и вывода
+// Писали совместно
 public class DiscreteField
 {
     private Cell[,] cells; // Двумерный массив ячеек, представляющих дискретное поле
@@ -106,6 +108,7 @@ public class DiscreteField
     }
 
     //Инициализация из файла
+    //Семён
     public void InitializeFieldFromFile(string filePath)
     {
         string[] lines = File.ReadAllLines(filePath);
@@ -127,6 +130,7 @@ public class DiscreteField
     }
 
     // Обход поля и поиск компонентов (Для инициализации рабочего поля и компонентов)
+    //Семён
     private void CreateComponents()
     {
         for (int y = 0; y < Height; y++)
@@ -156,6 +160,7 @@ public class DiscreteField
     }
 
     // Поиск контактов компонента (Для инициализации компонентов)
+    //Семён
     private void CreateContactsForComponent(Component component, Cell startCell)
     {
         Queue<Cell> queue = new Queue<Cell>();
@@ -171,6 +176,7 @@ public class DiscreteField
     }
 
     //Поиск всех ячеек, принадлежащих компоненту (Для инициализации компонентов)
+    ////Семён
     private void FindFullComponent(Cell startCell, Component component)
     {
         Queue<Cell> queue = new Queue<Cell>();
@@ -186,6 +192,7 @@ public class DiscreteField
     }
 
     //Рекурсивное добавление соседей в очередь (Для инициализации рабочего поля и компонентов)
+    //Семён
     private void AddNeighborsToCellQueue(Cell cell, Queue<Cell> queue, Component component)
     {
         if (cell.RightCell != null && cell.RightCell.State == CellState.ContainsComponent && cell.RightCell.Component == null)
@@ -243,6 +250,7 @@ public class DiscreteField
 
 
     // Конвертация символа в ячейку (Для инициализации рабочего поля)
+    // Ника
     private Cell CreateCellFromChar(int x, int y, char symbol)
     {
         Cell cell = new Cell
@@ -264,6 +272,7 @@ public class DiscreteField
 
 
     // Выбор состояния ячейки на основе символа (Для инициализации рабочего поля)
+    // Настя
     public CellState GetCellStateFromChar(char symbol)
     {
         switch (symbol)
@@ -298,6 +307,7 @@ public class DiscreteField
     }
 
     // Указание соседей для всех ячеек (Для инициализации рабочего поля)
+    // Ника
     public void ConnectCells()
     {
         for (int y = 0; y < Height; y++)
@@ -314,6 +324,7 @@ public class DiscreteField
     }
 
     // Получение ячейки или null, если координаты выходят за пределы поля
+    // Ника
     private Cell GetCellOrNull(int x, int y)
     {
         if (x < 0 || x >= Width || y < 0 || y >= Height)
@@ -322,6 +333,7 @@ public class DiscreteField
     }
 
     //Вывод дискретного поля в консоль
+    // Настя
     public void PrintField()
     {
         for (int y = 0; y < Height; y++)
@@ -361,6 +373,10 @@ public class DiscreteField
     }
 
     //Волновой алгоритм (Простой)
+    //Семён
+    /// <summary>
+    /// Базовый волновой алгоритм
+    /// </summary>
     public void WaveAlgorithm(Cell startCell, Cell endCell)
     {
         //Очищаем информацию о прохождении ячеек
@@ -426,6 +442,14 @@ public class DiscreteField
     }
 
     // Волновой алгоритм (с ограничением распостранения волны)
+    // Ника
+    /// <summary>
+    /// Ограниченный волновой алгоритм, где фронт
+    /// распостранения волны не выходит за X,Y координаты 
+    /// startCell и endCell.
+    /// Если в пределах ограниченной области нельзя проложить путь
+    /// он не прокладывается.
+    /// </summary>
     public void LimitedWaveAlgorithm(Cell startCell, Cell endCell)
     {
 
@@ -494,6 +518,13 @@ public class DiscreteField
 
 
     // Волновой алгоритм (встречная волна)
+    // Настя
+    /// <summary>
+    /// Алгоритм, где фронт распостраняется от начальной
+    /// и конечной точки одновременно.
+    /// При встрече фронтов в точке meetCell
+    /// Строим путь от startCell до meetCell и от meetCell.
+    /// </summary>
     public void BidirectionalWaveAlgorithm(Cell startCell, Cell endCell)
     {
         // Очищаем информацию о прохождении ячеек
@@ -704,6 +735,7 @@ public class DiscreteField
     }
 
     // Проверка ячейки на проходимость в встречном волновом алгоритме
+    // Настя
     private bool IsCellAvaliableBidirect(Cell cell, Cell targetCell)
     {
         return cell != null
@@ -712,6 +744,7 @@ public class DiscreteField
     }
 
     // Проверка ячейки на проходимость волновом алгоритме
+    // Семён
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
     {
         return nextCell != null
@@ -720,6 +753,7 @@ public class DiscreteField
     }
 
     // Доп проверка для волнового алгоритма с ограничением
+    // Ника
     private bool IsInLimit(Cell nextCell, Cell endCell, Cell startCell)
     {
         return nextCell.X >= Math.Min(startCell.X, endCell.X)
@@ -729,6 +763,7 @@ public class DiscreteField
     }
 
     // Поиск кратчайшего пути по фронту
+    // Семён
     public List<Cell> ReconstructPath(Cell startCell, Cell endCell)
     {
         List<Cell> path = new List<Cell>();
@@ -795,6 +830,7 @@ public class DiscreteField
     }
 
     // Очистка фронта
+    // Семён
     public void ClearPassInfo()
     {
         foreach (var cell in cells)
@@ -805,6 +841,7 @@ public class DiscreteField
     }
 
     // Поиск расстояния между двумя компонентами
+    // Настя
     public int GetDistanceBetweenComponents(Component component1, Component component2)
     {
         // Проверяем, что компоненты имеют одинаковый TraceId
@@ -852,6 +889,7 @@ public class DiscreteField
     }
 
     // Расстояние между двумя ячейками
+    // Ника
     public int GetDistanceBetweenCells(Cell cell1, Cell cell2)
     {
         return Math.Abs(cell1.X - cell2.X) + Math.Abs(cell1.Y - cell2.Y);
