@@ -1,16 +1,10 @@
 ﻿/// <summary>
-///  Что сделано:
-///     - Считывание компонентов разного размера, с разным количеством входов
-///     - Разделение на трассы
-///     - Волновой алгоритм с ограничением
-///     
-///     
 /// По проблемам:
 ///     - Нет критерия по изгибам, путевые координаты ломали все, убрал
-///     - Нет встречного алгоритма
-///     - Есть баги с проложением, может показать Wire на месте элемента
-///     - Явно не оптимальное проложение путей, можно короче
-///     
+///     - Рассмотрен идеальный случай
+///     - Элемент принадлежит одной трассе
+///     - Порядок цепей выбирается руками
+///     - Не соблюдены принципы ООП, Абсолютное отсутствие инкапсуляции
 /// </summary>
 
 public class Program
@@ -21,52 +15,30 @@ public class Program
         DiscreteField field = new DiscreteField(16, 16);
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
         field.PrintField();
-        Console.WriteLine("Trace ID");
-        field.PrintTraceID();
-        Console.WriteLine("ID");
-        field.PrintFieldID();
-        Console.WriteLine("Weights");
-        field.PrintPassWeights();
 
 
         // Проложение проводов для цепи 1
         Solution.TraceElements(field, 1);
         Console.WriteLine();
         field.PrintField();
-        Console.WriteLine("Trace ID");
-        field.PrintTraceID();
-        Console.WriteLine("ID");
-        field.PrintFieldID();
-        Console.WriteLine("Weights");
-        field.PrintPassWeights();
 
         // Проложение проводов для цепи 2
         Solution.TraceElements(field, 2);
         Console.WriteLine();
         field.PrintField();
-        Console.WriteLine("Trace ID");
-        field.PrintTraceID();
-        Console.WriteLine("ID");
-        field.PrintFieldID();
-        Console.WriteLine("Weights");
-        field.PrintPassWeights();
 
         // Проложение проводов для цепи 3
         Solution.TraceElements(field, 3);
         Console.WriteLine();
         field.PrintField();
-        field.PrintField();
-        Console.WriteLine("Trace ID");
-        field.PrintTraceID();
-        Console.WriteLine("ID");
-        field.PrintFieldID();
-        Console.WriteLine("Weights");
-        field.PrintPassWeights();
     }
 }
 
+
+// Класс решения задачи
 public static class Solution
 {
+    // Трассировка всех элементов i-ой Трассы
     public static void TraceElements(DiscreteField discreteField, int traceId)
     {
         // Сгруппируем компоненты по TraceId
@@ -95,16 +67,16 @@ public static class Solution
             Contact currentContact = currentComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(currentComponent.Contacts[0].Cell, c.Cell)).Where(c => !c.IsOccupied).First();
             Contact nextContact = nextComponent.Contacts.OrderBy(c => discreteField.GetDistanceBetweenCells(nextComponent.Contacts[0].Cell, c.Cell)).Where(c => !c.IsOccupied).First();
 
-            Console.WriteLine($"First Contact {currentContact.Cell.Id}  Second {nextContact.Cell.Id}");
+            // Делаем контакты занятыми
             currentContact.IsOccupied = true;
             nextContact.IsOccupied = true; 
+
+
+            // Выбор одного из трех волновых алгоритмов
 
             discreteField.WaveAlgorithm(currentContact.Cell, nextContact.Cell);
             //discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
             //discreteField.BidirectionalWaveAlgorithm(currentContact, nextContact);
-
-            Console.WriteLine("akkfds;ahg;sdhagljsdagjsdahg");
-            discreteField.PrintField();
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -113,7 +85,7 @@ public static class Solution
 }
 
 
-
+// Дискретное рабочее поле, с методами волновых алгоритмов, чтения и вывода
 public class DiscreteField
 {
     private Cell[,] cells; // Двумерный массив ячеек, представляющих дискретное поле
@@ -125,10 +97,6 @@ public class DiscreteField
     private int componentIdCounter = 1; // Счетчик для присвоения уникальных идентификаторов компонентам
 
     // Конструктор
-
-
-
-
     public DiscreteField(int width, int height)
     {
         Width = width;
@@ -158,7 +126,7 @@ public class DiscreteField
         CreateComponents();
     }
 
-    // Обход поля и поиск компонентов
+    // Обход поля и поиск компонентов (Для инициализации рабочего поля и компонентов)
     private void CreateComponents()
     {
         for (int y = 0; y < Height; y++)
@@ -183,19 +151,11 @@ public class DiscreteField
                     // Создаем контакты для компонента
                     CreateContactsForComponent(component, cell);
                 }
-                else if (cell.State == CellState.ContainsComponentContact)
-                {
-                    // Добавляем ячейку с контактом к соответствующему компоненту
-                    //Component component = Components.Find(c => c.TraceId == cell.TraceId);
-                   // if (component != null)
-                    //{
-                     //   component.Contacts.Add(new Contact(cell));
-                    //}
-                }
             }
         }
     }
 
+    // Поиск контактов компонента (Для инициализации компонентов)
     private void CreateContactsForComponent(Component component, Cell startCell)
     {
         Queue<Cell> queue = new Queue<Cell>();
@@ -207,15 +167,10 @@ public class DiscreteField
             Cell currentCell = queue.Dequeue();
 
             AddNeighborsToCellQueue(currentCell, queue, component);
-
-            // Создаем контакт для текущей ячейки
-            //component.Contacts.Add(new Contact(currentCell));
         }
     }
 
-
-
-    //Поиск всех ячеек, принадлежащих компоненту
+    //Поиск всех ячеек, принадлежащих компоненту (Для инициализации компонентов)
     private void FindFullComponent(Cell startCell, Component component)
     {
         Queue<Cell> queue = new Queue<Cell>();
@@ -230,7 +185,7 @@ public class DiscreteField
         }
     }
 
-    //Рекурсивное добавление соседей в очередь
+    //Рекурсивное добавление соседей в очередь (Для инициализации рабочего поля и компонентов)
     private void AddNeighborsToCellQueue(Cell cell, Queue<Cell> queue, Component component)
     {
         if (cell.RightCell != null && cell.RightCell.State == CellState.ContainsComponent && cell.RightCell.Component == null)
@@ -287,7 +242,7 @@ public class DiscreteField
     }
 
 
-    // Конвертация символа в ячейку 
+    // Конвертация символа в ячейку (Для инициализации рабочего поля)
     private Cell CreateCellFromChar(int x, int y, char symbol)
     {
         Cell cell = new Cell
@@ -308,7 +263,7 @@ public class DiscreteField
     }
 
 
-    // Выбор состояния ячейки на основе символа
+    // Выбор состояния ячейки на основе символа (Для инициализации рабочего поля)
     public CellState GetCellStateFromChar(char symbol)
     {
         switch (symbol)
@@ -342,8 +297,7 @@ public class DiscreteField
         return cells[y, x];
     }
 
-
-    // Указание соседей для всех ячеек
+    // Указание соседей для всех ячеек (Для инициализации рабочего поля)
     public void ConnectCells()
     {
         for (int y = 0; y < Height; y++)
@@ -406,7 +360,7 @@ public class DiscreteField
         ResetConsoleColor();
     }
 
-    //Волновой алгоритм
+    //Волновой алгоритм (Простой)
     public void WaveAlgorithm(Cell startCell, Cell endCell)
     {
         //Очищаем информацию о прохождении ячеек
@@ -420,6 +374,7 @@ public class DiscreteField
         Queue<Cell> queue = new Queue<Cell>();
         queue.Enqueue(startCell);
 
+        // Пока не пройдем все ячейки итеративно проходим по всем соседям
         while (queue.Count > 0)
         {
             Cell currentCell = queue.Dequeue();
@@ -461,7 +416,6 @@ public class DiscreteField
         }
 
         //Строим путь
-
         List<Cell> path = ReconstructPath(startCell, endCell);
         foreach (var cell in path)
         {
@@ -471,7 +425,7 @@ public class DiscreteField
 
     }
 
-    // Волновой алгоритм с ограничением распостранения волны
+    // Волновой алгоритм (с ограничением распостранения волны)
     public void LimitedWaveAlgorithm(Cell startCell, Cell endCell)
     {
 
@@ -486,11 +440,12 @@ public class DiscreteField
         Queue<Cell> queue = new Queue<Cell>();
         queue.Enqueue(startCell);
 
+        // Пока не пройдем все ячейки итеративно проходим по всем соседям
         while (queue.Count > 0)
         {
             Cell currentCell = queue.Dequeue();
 
-
+            //Добавлена проверка на выход за прямоугольную область
             if (IsCellAvaliable(currentCell.DownCell, endCell) && IsInLimit(currentCell.DownCell, endCell, startCell))
             {
                 int weight = currentCell.PassInfo.Weight + 1;
@@ -527,7 +482,6 @@ public class DiscreteField
         }
 
         //Строим путь
-
         List<Cell> path = ReconstructPath(startCell, endCell);
         foreach (var cell in path)
         {
@@ -538,9 +492,10 @@ public class DiscreteField
 
     }
 
+
+    // Волновой алгоритм (встречная волна)
     public void BidirectionalWaveAlgorithm(Cell startCell, Cell endCell)
     {
-        Console.WriteLine($"Start cell {startCell.Id}, end cell {endCell.Id}");
         // Очищаем информацию о прохождении ячеек
         ClearPassInfo();
 
@@ -557,10 +512,11 @@ public class DiscreteField
         forwardQueue.Enqueue(startCell);
         backwardQueue.Enqueue(endCell);
 
+        // Флаги 
         bool pathFound = false;
+        bool meetForward = false;
         Cell meetingCellOther = null;
         Cell meetingCell = null;
-        bool meetForward = false;
 
 
         while (forwardQueue.Count > 0 || backwardQueue.Count > 0)
@@ -596,6 +552,7 @@ public class DiscreteField
                     meetingCell = currentCell;
                 }
 
+                // Проход по соседям
                 if (IsCellAvaliableBidirect(currentCell.DownCell, startCell))
                 {
                     int weight = currentCell.PassInfo.Weight + 1;
@@ -664,6 +621,7 @@ public class DiscreteField
                     meetingCell = currentCell;
                 }
 
+                // Проход по соседям
                 if (IsCellAvaliableBidirect(currentCell.DownCell, endCell))
                 {
                     int weight = currentCell.PassInfo.Weight + 1;
@@ -697,53 +655,44 @@ public class DiscreteField
                 }
             }
 
+
             if (pathFound)
             {
-                Console.WriteLine($"Meeting Cell {meetingCell.Id}, Meeting Cell other {meetingCellOther.Id}");
-                Console.WriteLine(meetForward);
                 List<Cell> forwardPath = new List<Cell>();
                 List<Cell> backwardPath = new List<Cell>();
 
+                // Строим путь от startCell до встречной ячейки и от endCell до встречной ячейки
+
                 if (meetForward)
                 {
-                    // Строим путь от startCell до встречной ячейки
                     forwardPath = ReconstructPath(startCell, meetingCell);
-
-                    // Строим путь от endCell до встречной ячейки
                     backwardPath = ReconstructPath(endCell, meetingCellOther);
                 }
                 else
                 {
-                    // Строим путь от startCell до встречной ячейки
                     forwardPath = ReconstructPath(startCell, meetingCellOther);
-
-                    // Строим путь от endCell до встречной ячейки
                     backwardPath = ReconstructPath(endCell, meetingCell);
                 }
                 
 
+                // Полный путь
                 List<Cell> fullPath = new List<Cell>();
 
                 // Отмечаем ячейки, содержащие провод
                 foreach (var cell in forwardPath)
                 {
-                    Console.WriteLine(cell.Id);
                     if (!fullPath.Contains(cell))
                         fullPath.Add(cell);
                 }
-
-                Console.WriteLine();
                 foreach (var cell in backwardPath)
                 {
-                    Console.WriteLine(cell.Id);
                     if (!fullPath.Contains(cell))
                         fullPath.Add(cell);
                 }
 
-                Console.WriteLine();
+                // Прокладываем путь
                 foreach (var cell in fullPath)
                 {
-                    Console.WriteLine($"Id{cell.Id}   Trace Id {cell.TraceId}");
                     cell.TraceId = startCell.TraceId;
                     cell.State = CellState.ContainsWire;
                 }
@@ -754,22 +703,21 @@ public class DiscreteField
         }
     }
 
-    private bool IsCellAvaliableBidirect(Cell cell, Cell prevCell)
+    // Проверка ячейки на проходимость в встречном волновом алгоритме
+    private bool IsCellAvaliableBidirect(Cell cell, Cell targetCell)
     {
         return cell != null
             && !cell.PassInfo.IsPassed
-            && cell.State == CellState.Empty || (cell.State == CellState.ContainsWire && cell.TraceId == prevCell.TraceId);
+            && cell.State == CellState.Empty || (cell.State == CellState.ContainsWire && cell.TraceId == targetCell.TraceId);
     }
 
-
+    // Проверка ячейки на проходимость волновом алгоритме
     private bool IsCellAvaliable(Cell nextCell, Cell endCell)
     {
         return nextCell != null
         && (!nextCell.PassInfo.IsPassed)
         && (nextCell.State == CellState.Empty || nextCell == endCell || (nextCell.State == CellState.ContainsWire && nextCell.TraceId == endCell.TraceId));
     }
-
-
 
     // Доп проверка для волнового алгоритма с ограничением
     private bool IsInLimit(Cell nextCell, Cell endCell, Cell startCell)
@@ -779,7 +727,6 @@ public class DiscreteField
            && nextCell.Y >= Math.Min(startCell.Y, endCell.Y)
            && nextCell.Y <= Math.Max(startCell.Y, endCell.Y);
     }
-
 
     // Поиск кратчайшего пути по фронту
     public List<Cell> ReconstructPath(Cell startCell, Cell endCell)
@@ -854,7 +801,6 @@ public class DiscreteField
         {
             cell.PassInfo.IsPassed = false;
             cell.PassInfo.Weight = 0;
-            cell.PassInfo.Direction = Direction.Down;
         }
     }
 
@@ -882,165 +828,6 @@ public class DiscreteField
         }
 
         return minDistance;
-    }
-
-    //Отладочный метод вывода
-    public void PrintFieldID()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                Console.ForegroundColor = GetColorForCellState(cell.State);
-                Console.Write("{0,3} ", cell.Id);
-            }
-            Console.ResetColor();
-            Console.WriteLine();
-        }
-    }
-
-    private ConsoleColor GetColorForCellState(CellState state)
-    {
-        switch (state)
-        {
-            case CellState.Empty:
-                return ConsoleColor.White; // Белый для пустых ячеек
-            case CellState.Obstacle:
-                return ConsoleColor.Red; // Красный для препятствий
-            case CellState.ContainsComponent:
-                return ConsoleColor.Yellow; // Желтый для компонентов
-            case CellState.ContainsComponentContact:
-                return ConsoleColor.Green; // Зеленый для контактов компонентов
-            case CellState.ContainsWire:
-                return ConsoleColor.Blue; // Синий для провода
-            default:
-                return ConsoleColor.Gray; // Серый по умолчанию
-        }
-    }
-
-    private ConsoleColor GetColorForCellState(int num)
-    {
-        switch (num)
-        {
-            case 0:
-                return ConsoleColor.White; // Белый для пустых ячеек
-            case 1:
-                return ConsoleColor.Red; // Красный для препятствий
-            case 2:
-                return ConsoleColor.Yellow; // Желтый для компонентов
-            case 3:
-                return ConsoleColor.Green; // Зеленый для контактов компонентов
-            case 4:
-                return ConsoleColor.Blue; // Синий для провода
-            default:
-                return ConsoleColor.Gray; // Серый по умолчанию
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintRightNeighborsId()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                int rightNeighborId = cell.RightCell != null ? cell.RightCell.Id : -1;
-                Console.Write($"{rightNeighborId} ");
-            }
-            Console.WriteLine();
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintFieldComponentsID()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                if (cell.State == CellState.ContainsComponent)
-                    Console.Write($"{cell.Component.Id} ");
-                else
-                    Console.Write('_');
-            }
-            Console.WriteLine();
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintFieldComponentsTraceID()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                if (cell.State == CellState.ContainsComponent)
-                    Console.Write($"{cell.Component.TraceId} ");
-                else
-                    Console.Write('_');
-            }
-            Console.WriteLine();
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintFieldComponentsContactsTraceID()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                if (cell.State == CellState.ContainsComponentContact)
-                    Console.Write($"{cell.TraceId} ");
-                else
-                    Console.Write('_');
-            }
-            Console.WriteLine();
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintComponentsContacts()
-    {
-        foreach (var component in Components)
-        {
-            foreach (var contact in component.Contacts)
-            {
-                Console.Write($"{contact.Cell.Id} ");
-            }
-            Console.WriteLine();
-
-        }
-    }
-    //Отладочный метод вывода
-    public void PrintPassWeights()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                Console.ForegroundColor = GetColorForCellState(cell.State);
-                Console.Write("{0,3} ", cell.PassInfo.Weight);
-            }
-            Console.ResetColor();
-            Console.WriteLine();
-        }
-    }
-
-    public void PrintTraceID()
-    {
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                Cell cell = GetCell(x, y);
-                Console.ForegroundColor = GetColorForCellState(cell.TraceId);
-                Console.Write("{0,2} ", cell.TraceId);
-            }
-            Console.ResetColor();
-            Console.WriteLine();
-        }
     }
 
 
@@ -1076,9 +863,9 @@ public class PassInfo
 {
     public bool IsPassed = false; // Флаг, указывающий, что ячейка была пройдена
     public int Weight = 0; // Вес ячейки (расстояние от начальной ячейки)
-    public Direction Direction; // Направление движения при прохождении ячейки
 };
 
+// Контакт компонента
 public class Contact
 {
     public Cell Cell { get; set; }
@@ -1146,16 +933,6 @@ public enum CellState
     ContainsComponentContact, // Ячейка, содержащая контакт компонента
     ContainsWire // Ячейка, содержащая провод
 };
-
-
-// Путевые координаты, которых нет)))
-public enum Direction
-{
-    Down,
-    Left,
-    Up,
-    Right
-}
 
 //Ячейка дискретного поля
 public class Cell
