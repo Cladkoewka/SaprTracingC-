@@ -12,26 +12,38 @@ public class Program
     // Точка входа
     public static void Main()
     {
-        // Создание дискретного поля, инициализация из файла и вывод на консоль
+        // Создание дискретного поля, инициализация из файла
         DiscreteField field = new DiscreteField(16, 16);
         field.InitializeFieldFromFile("C:/Users/semen/Desktop/_/УчебаСем4/SAPR_Trasing/SAPR_Trasing/board.txt");
+
+        // Вывод дискретного поля в консоль
         field.PrintField();
 
+        // Пользовательский интерфейс
+        ConsoleUI(field);
+    }
 
-        // Проложение проводов для цепи 1
-        Solution.TraceElements(field, 1);
-        Console.WriteLine();
-        field.PrintField();
+    // Консольный пользовательский интерфейс
+    private static void ConsoleUI(DiscreteField field)
+    {
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Выберите трассу для прокладки (1-3) или 0 для выхода:");
+            int traceId = int.Parse(Console.ReadLine());
 
-        // Проложение проводов для цепи 2
-        Solution.TraceElements(field, 2);
-        Console.WriteLine();
-        field.PrintField();
+            if (traceId == 0)
+                break;
 
-        // Проложение проводов для цепи 3
-        Solution.TraceElements(field, 3);
-        Console.WriteLine();
-        field.PrintField();
+            Console.WriteLine("Выберите волновой алгоритм (1-Простой, 2-Ограниченный, 3-Встречный):");
+            int waveAlgorithm = int.Parse(Console.ReadLine());
+
+            Console.WriteLine();
+
+            // Проложение проводов
+            Solution.TraceElements(field, traceId, waveAlgorithm);
+            field.PrintField();
+        }
     }
 }
 
@@ -40,7 +52,7 @@ public class Program
 public static class Solution
 {
     // Трассировка всех элементов i-ой Трассы
-    public static void TraceElements(DiscreteField discreteField, int traceId)
+    public static void TraceElements(DiscreteField discreteField, int traceId, int waveAlgorithm)
     {
         // Сгруппируем компоненты по TraceId
         Dictionary<int, List<Component>> componentsByTraceId = new Dictionary<int, List<Component>>();
@@ -75,9 +87,12 @@ public static class Solution
 
             // Выбор одного из трех волновых алгоритмов
 
-            discreteField.WaveAlgorithm(currentContact.Cell, nextContact.Cell);
-            //discreteField.LimitedWaveAlgorithm(currentContact, nextContact);
-            //discreteField.BidirectionalWaveAlgorithm(currentContact, nextContact);
+            if (waveAlgorithm == 1)
+                discreteField.WaveAlgorithm(currentContact.Cell, nextContact.Cell);
+            else if (waveAlgorithm == 2)
+            discreteField.LimitedWaveAlgorithm(currentContact.Cell, nextContact.Cell);
+            else if (waveAlgorithm == 3)
+                discreteField.BidirectionalWaveAlgorithm(currentContact.Cell, nextContact.Cell);
 
             currentComponent.IsConnected = true;
             nextComponent.IsConnected = true;
@@ -945,8 +960,6 @@ public class Contact
         return !(contact1 == contact2);
     }
 }
-
-
 //Компонент
 public class Component
 {
@@ -960,8 +973,6 @@ public class Component
         Contacts = new List<Contact>();
     }
 }
-
-
 // Состояние ячейки
 public enum CellState
 {
